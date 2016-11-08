@@ -5,12 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 
-/* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
-static struct list ready_list;
 
-/* List of waiting threads */
-static struct list waiting_list;
 
 /* States in a thread's life cycle. */
 enum thread_status

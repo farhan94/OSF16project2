@@ -29,12 +29,15 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+/* List of waiting threads */
+static struct list waiting_list;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
 timer_init (void) 
 {
+	 list_init(&waiting_list);
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -89,15 +92,19 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-  thread_current()->ticks_to_wake = ticks+start;
-  enum intr_level old_level = intr_disable ();
-  list_push_back(&waiting_list, &thread_current()->wait_elem);
-  thread_block();
-  intr_set_level (old_level);
+	//printf("SLEEP\n\n\n\n\n");
+	ASSERT (intr_get_level () == INTR_ON);
+	int64_t start = timer_ticks ();
+	thread_current()->ticks_to_wake = ticks + start;
+	enum intr_level old_level = intr_disable ();
+	//list_remove(&thread_current()->elem);
+	list_push_back(&waiting_list, &thread_current()->wait_elem);
+	//printf("BEFOR BLOCK\n\n\n\n\n");
+	thread_block();
+	intr_set_level (old_level);
  // list_remove(&thread_current()->elem);
 
-  ASSERT (intr_get_level () == INTR_ON);
+//  ASSERT (intr_get_level () == INTR_ON);
   //while (timer_elapsed (start) < ticks) 
     //thread_yield ();
 }
@@ -179,17 +186,15 @@ timer_interrupt (struct intr_frame *args UNUSED)
    ticks++;
    struct list_elem *le;
     //printf("&& %x\n", v_addr);
-    
     for (le = list_begin(&waiting_list); le != list_end(&waiting_list); le = list_next(le)) {
         struct thread *t = list_entry(le, struct thread, wait_elem);
-        if(t != NULL){
-        	//printf("\n\n\n\n\nHERE\n\n\n\n\n");
-        	break;
-        }
-      	if(t->ticks_to_wake < timer_ticks() ){
+        //printf("\n\n\n\n\nHERE\n\n\n\n\n");
+      	if(t->ticks_to_wake < ticks){
+      		
       		enum intr_level old_level = intr_disable ();
       	 	thread_unblock(t);
-      	 	list_remove(&t->wait_elem);
+      	 	struct list_elem* el = list_remove(&t->wait_elem);
+      	 	le = list_prev(el);
       	 	intr_set_level (old_level);
    
       	}
