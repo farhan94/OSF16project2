@@ -5,6 +5,13 @@
 #include <list.h>
 #include <stdint.h>
 
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+static struct list ready_list;
+
+/* List of waiting threads */
+static struct list waiting_list;
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -90,8 +97,11 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    /*THREADS PROJECT */
+    int64_t ticks_to_wake;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list_elem wait_elem;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
