@@ -189,7 +189,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     for (le = list_begin(&waiting_list); le != list_end(&waiting_list); le = list_next(le)) {
         struct thread *t = list_entry(le, struct thread, wait_elem);
         //printf("\n\n\n\n\nHERE\n\n\n\n\n");
-      	if(t->ticks_to_wake < ticks){
+      	if(ticks >= t->ticks_to_wake){
       		
       		enum intr_level old_level = intr_disable ();
       	 	thread_unblock(t);
