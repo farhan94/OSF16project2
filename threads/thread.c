@@ -39,6 +39,8 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+bool pri_check (struct list_elem *ele1, struct list_elem *ele2);
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -239,6 +241,7 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
+  list_sort (&ready_list, &pri_check, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -583,3 +586,12 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+bool pri_check (struct list_elem *ele1, struct list_elem *ele2){
+  struct thread *thr1 = list_entry(ele1, struct thread, elem);
+  struct thread *thr2 = list_entry(ele2, struct thread, elem);
+  if( thr2->priority >= thr1->priority){
+    return false;
+  }
+  return true;
+}

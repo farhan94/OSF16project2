@@ -90,6 +90,7 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+    int base_priority;
     struct list_elem allelem;           /* List element for all threads list. */
 
     /*THREADS PROJECT */
@@ -97,6 +98,8 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list_elem wait_elem;
+    struct list pri_c;
+    struct list_elem pri_elem;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
