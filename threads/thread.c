@@ -39,6 +39,8 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+void yield_check(void);
+
 bool pri_check (struct list_elem *ele1, struct list_elem *ele2);
 
 /* Stack frame for kernel_thread(). */
@@ -203,9 +205,13 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  enum intr_level old_level;
+  //old_level = intr_disable();
+  yield_check();
+  //intr_set_level(old_level);
   return tid;
 }
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -339,7 +345,14 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  
   thread_current ()->priority = new_priority;
+  struct list_elem *e = list_begin(&ready_list);
+  struct thread *t = list_entry(e, struct thread, elem);
+  if(new_priority < t->priority){
+    thread_yield();
+  }
+
 }
 
 /* Returns the current thread's priority. */
@@ -594,4 +607,13 @@ bool pri_check (struct list_elem *ele1, struct list_elem *ele2){
     return false;
   }
   return true;
+}
+
+void yield_check(void){
+  //thread_current ()->priority = new_priority;
+  struct list_elem *e = list_begin(&ready_list);
+  struct thread *t = list_entry(e, struct thread, elem);
+  if(thread_current()->priority < t->priority){
+    thread_yield();
+  }
 }
