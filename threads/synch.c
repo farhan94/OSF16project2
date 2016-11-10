@@ -226,7 +226,16 @@ lock_acquire (struct lock *lock)
         lock->holder->priority = t->priority;
         list_push_back(&lock->holder->donors, &t->d_e);
         list_sort (&lock->holder->donors, &pri_check2, NULL);
-        
+        if(lock->holder->major_key != NULL){
+          struct lock *lock2 = lock->holder->major_key;
+        //  list_push_back(&lock2->holder->donors, &thread_current()->d_e);
+         // list_sort (&lock2->holder->donors, &pri_check2, NULL);
+         // e = list_pop_front(&lock2->holder->donors);
+         // t = list_entry(e, struct thread, d_e);
+          if (lock2->holder->priority < t->priority){
+            lock2->holder->priority = t->priority;
+          }
+        }
        // lock->holder->priority = thread_current()->priority;
 
     }
@@ -281,6 +290,7 @@ lock_release (struct lock *lock)
          if(lock == t->major_key){
            struct list_elem* el = list_remove(&t->d_e);
            //le = list_prev(el);
+
            }
            le = list_next(le);
     }
