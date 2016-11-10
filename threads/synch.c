@@ -32,6 +32,15 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+bool pri_check2 (struct list_elem *ele1, struct list_elem *ele2){
+  struct thread *thr1 = list_entry(ele1, struct thread, d_e);
+  struct thread *thr2 = list_entry(ele2, struct thread, d_e);
+  if( thr2->priority >= thr1->priority){
+    return false;
+  }
+  return true;
+}
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -203,23 +212,28 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+  enum intr_level old_level = intr_disable();
   struct thread *t = thread_current();
   if(lock->holder != NULL){
     if(lock->holder->priority < thread_current()->priority){
         //lock->donor = thread_current();
+
         thread_current()->major_key = lock;
         list_push_back(&lock->holder->donors, &thread_current()->d_e);
-        list_sort (&lock->holder->donors, &pri_check, NULL);
+        list_sort (&lock->holder->donors, &pri_check2, NULL);
         struct list_elem *e = list_begin(&lock->holder->donors);
         t = list_entry(e, struct thread, d_e);
         lock->holder->priority = t->priority;
+       // list_push_back(&lock->holder->donors, &t->d_e);
+        //list_sort (&lock->holder->donors, &pri_check2, NULL);
+        
        // lock->holder->priority = thread_current()->priority;
 
     }
 }
   sema_down (&lock->semaphore);
-
   lock->holder = thread_current();
+  intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -259,23 +273,33 @@ lock_release (struct lock *lock)
   else{
     struct list_elem *le;
     struct thread *t;
-    printf("\n\n\n\n@@HERE\n\n\n");
-    for (le = list_begin(&lock->holder->donors); le != list_end(&lock->holder->donors); le = list_next(le)) {
-         t = list_entry(le, struct thread, d_e);
-         //printf("\n\n\n\n\nHERE\n\n\n\n\n");
+    le = list_begin(&lock->holder->donors);
+   //printf("\n\n\n\n@@HERE\n\n\n");
+    while(le != list_end(&lock->holder->donors)){
+      t = list_entry(le, struct thread, d_e);
          if(lock == t->major_key){
            struct list_elem* el = list_remove(&t->d_e);
-           le = list_prev(el);
+           //le = list_prev(el);
            }
-     }
+           le = list_next(le);
+    }
+    // for (le = list_begin(&lock->holder->donors); le != list_end(&lock->holder->donors); le = list_next(le)) {
+    //      printf("\n\n\n\n%x\n\n\n\n\n",le);
+    //      t = list_entry(le, struct thread, d_e);
+    //      if(lock == t->major_key){
+    //        struct list_elem* el = list_remove(&t->d_e);
+    //        le = list_prev(el);
+    //        }
+          
+    //  }
 
     //struct list_elem *e = list_pop_front(&lock->holder->donors);
-   t = list_entry(e, struct thread, d_e);
+   //t = list_entry(e, struct thread, d_e);
     if(list_empty(&lock->holder->donors)){
        lock->holder->priority = lock->holder->base_priority;
     }
     else{
-      e = list_begin(&lock->holder);
+      e = list_begin(&lock->holder->donors);  
       t = list_entry(e, struct thread, d_e);
       lock->holder->priority = t->priority;
   }
