@@ -221,11 +221,11 @@ lock_acquire (struct lock *lock)
         thread_current()->major_key = lock;
         list_push_back(&lock->holder->donors, &thread_current()->d_e);
         list_sort (&lock->holder->donors, &pri_check2, NULL);
-        struct list_elem *e = list_begin(&lock->holder->donors);
+        struct list_elem *e = list_pop_front(&lock->holder->donors);
         t = list_entry(e, struct thread, d_e);
         lock->holder->priority = t->priority;
-       // list_push_back(&lock->holder->donors, &t->d_e);
-        //list_sort (&lock->holder->donors, &pri_check2, NULL);
+        list_push_back(&lock->holder->donors, &t->d_e);
+        list_sort (&lock->holder->donors, &pri_check2, NULL);
         
        // lock->holder->priority = thread_current()->priority;
 
@@ -233,6 +233,7 @@ lock_acquire (struct lock *lock)
 }
   sema_down (&lock->semaphore);
   lock->holder = thread_current();
+  thread_current()->major_key = NULL;
   intr_set_level(old_level);
 }
 
