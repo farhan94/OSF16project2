@@ -124,7 +124,7 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   }
   sema->value++;
-  thread_yield();
+  yield_check();
   intr_set_level (old_level);
 }
 
@@ -184,7 +184,7 @@ void
 lock_init (struct lock *lock)
 {
   ASSERT (lock != NULL);
-
+  list_init(&lock->donors);
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
 }
@@ -203,9 +203,23 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+  struct thread *t = thread_current();
+  if(lock->holder != NULL){
+    if(lock->holder->priority < thread_current()->priority){
+        //lock->donor = thread_current();
+        thread_current()->major_key = lock;
+        list_push_back(&lock->holder->donors, &thread_current()->d_e);
+        list_sort (&lock->holder->donors, &pri_check, NULL);
+        struct list_elem *e = list_begin(&lock->holder->donors);
+        t = list_entry(e, struct thread, d_e);
+        lock->holder->priority = t->priority;
+       // lock->holder->priority = thread_current()->priority;
 
+    }
+}
   sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+
+  lock->holder = thread_current();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -238,9 +252,71 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
+  struct list_elem *e = list_begin(&lock->holder);
+  if(list_empty(&lock->holder->donors)){
+    lock->holder->priority = lock->holder->base_priority;
+  }
+  else{
+    struct list_elem *le;
+    struct thread *t;
+    printf("\n\n\n\n@@HERE\n\n\n");
+    for (le = list_begin(&lock->holder->donors); le != list_end(&lock->holder->donors); le = list_next(le)) {
+         t = list_entry(le, struct thread, d_e);
+         //printf("\n\n\n\n\nHERE\n\n\n\n\n");
+         if(lock == t->major_key){
+           struct list_elem* el = list_remove(&t->d_e);
+           le = list_prev(el);
+           }
+     }
 
+    //struct list_elem *e = list_pop_front(&lock->holder->donors);
+   t = list_entry(e, struct thread, d_e);
+    if(list_empty(&lock->holder->donors)){
+       lock->holder->priority = lock->holder->base_priority;
+    }
+    else{
+      e = list_begin(&lock->holder);
+      t = list_entry(e, struct thread, d_e);
+      lock->holder->priority = t->priority;
+  }
+  }
   lock->holder = NULL;
+  //lock->donor = NULL;
+
   sema_up (&lock->semaphore);
+
+  // ASSERT (lock != NULL);
+  // ASSERT (lock_held_by_current_thread (lock));
+  // struct list_elem *e = list_begin(&lock->holder);
+  // struct thread *t;
+  //  if(list_empty(&lock->holder->donors)){
+  //    lock->holder->priority = lock->holder->base_priority;
+  // }
+  //  else{
+  //      struct list_elem *le;
+  //   for (le = list_begin(&lock->holder->donors); le != list_end(&lock->holder->donors); le = list_next(le)) {
+  //       t = list_entry(le, struct thread, d_e);
+  //       //printf("\n\n\n\n\nHERE\n\n\n\n\n");
+  //       if(lock == t->major_key){
+  //         struct list_elem* el = list_remove(&t->d_e);
+  //         le = list_prev(el);
+  //         }
+  //   }
+  // //   struct list_elem *e = list_pop_front(&lock->holder->donors);
+  // //   struct thread *t = list_entry(e, struct thread, d_e);
+  //    if(list_empty(&lock->holder->donors)){
+  //       lock->holder->priority = lock->holder->base_priority;
+  //    }
+  //    else{
+  //      e = list_begin(&lock->holder);
+  //      t = list_entry(e, struct thread, d_e);
+  //      lock->holder->priority = t->priority;
+  //  }
+  // }
+  // lock->holder = NULL;
+  // //lock->donor = NULL;
+
+  // sema_up (&lock->semaphore);
 }
 
 /* Returns true if the current thread holds LOCK, false

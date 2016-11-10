@@ -41,7 +41,6 @@ static struct lock tid_lock;
 
 void yield_check(void);
 
-bool pri_check (struct list_elem *ele1, struct list_elem *ele2);
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -355,6 +354,8 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
   struct list_elem *e = list_begin(&ready_list);
   struct thread *t = list_entry(e, struct thread, elem);
+  list_sort (&ready_list, &pri_check, NULL);
+
   if(thread_current()->priority < t->priority){
     thread_yield();
   }
@@ -484,6 +485,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->base_priority = priority;
+  list_init(&t->donors);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();

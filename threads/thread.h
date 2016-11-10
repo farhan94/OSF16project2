@@ -8,6 +8,7 @@
 
 
 /* States in a thread's life cycle. */
+
 enum thread_status
   {
     THREAD_RUNNING,     /* Running thread. */
@@ -100,6 +101,9 @@ struct thread
     struct list_elem wait_elem;
     struct list pri_c;
     struct list_elem pri_elem;
+    struct list donors;
+    struct list_elem d_e;
+    struct lock_t *major_key;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
