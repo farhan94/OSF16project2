@@ -385,6 +385,40 @@ cond_init (struct condition *cond)
   list_init (&cond->waiters);
 }
 
+
+bool pri_check_cond_var(struct list_elem *sema1, struct list_elem *sema2){
+  struct semaphore_elem *sema_elem1;
+  struct semaphore_elem *sema_elem2;
+  struct thread *thr1;
+  struct thread *thr2;
+  sema_elem1 = list_entry(sema1, struct semaphore_elem, elem);
+  sema_elem2 = list_entry(sema2, struct semaphore_elem, elem);
+  struct list *sema1_waiters = &sema_elem1->semaphore.waiters;
+  struct list *sema2_waiters = &sema_elem2->semaphore.waiters;
+  //printf("\n\n1\n\n");
+  if(list_empty(sema1_waiters)){
+    return true;
+  }
+  if(list_empty(sema2_waiters)){
+    return false;
+  }
+ // printf("\n\n2\n\n");
+  list_sort(sema1_waiters, &pri_check, NULL);
+  list_sort(sema2_waiters, &pri_check, NULL);
+  //printf("\n\n3\n\n");
+  struct list_elem *thr_elem1 = list_begin(sema1_waiters);
+  struct list_elem *thr_elem2 = list_begin(sema2_waiters);
+ // printf("\n\n4\n\n");
+  thr1 = list_entry(thr_elem1, struct thread, elem);
+  thr2 = list_entry(thr_elem2, struct thread, elem);
+ // printf("\n\n5\n\n");
+  if(thr1->priority > thr2->priority){
+    return true;
+  }
+  return false;
+}
+
+
 /* Atomically releases LOCK and waits for COND to be signaled by
    some other piece of code.  After COND is signaled, LOCK is
    reacquired before returning.  LOCK must be held before calling
@@ -417,7 +451,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   
   sema_init (&waiter.semaphore, 0);
   list_push_back (&cond->waiters, &waiter.elem);
-  list_sort (&cond->waiters, &pri_check, NULL);
+  list_sort (&cond->waiters, &pri_check_cond_var, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -439,7 +473,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) {
-    list_sort (&cond->waiters, &pri_check, NULL);
+    list_sort (&cond->waiters, &pri_check_cond_var, NULL);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
   }
